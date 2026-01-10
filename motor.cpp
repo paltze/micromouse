@@ -11,7 +11,7 @@
  * Speed Sensor Connections:
  * Motor A Encoder -> GPIO 34 (ADC1)
  * Motor B Encoder -> GPIO 35 (ADC1)
- * VCC -> 3.3V/5V | GND -> GND
+ * VCC -> 3.3V/5V | GND -> GND 
  */
 
 #include <Arduino.h>
@@ -42,12 +42,12 @@ unsigned long lastTimeB = 0;
 float rpmA = 0;
 float rpmB = 0;
 
-// Speed sensor configuration
+// Speed sensor configuration150
 const int SLOTS_IN_DISC = 20;  // Number of slots in encoder disc (adjust for your sensor)
 const unsigned long CALC_INTERVAL = 1000;  // Calculate RPM every 1000ms
 
 // Motor speed (0-255)
-int motorSpeed = 150;
+int motorSpeed = 80;
 
 // ===== Interrupt Service Routines =====
 void IRAM_ATTR encoderISR_A() {
@@ -82,12 +82,12 @@ void motorA(int speed) {
   // Positive = forward, Negative = backward, 0 = stop
   
   if (speed > 0) {
-    digitalWrite(AIN1, HIGH);
-    digitalWrite(AIN2, LOW);
-    ledcWrite(PWMA, speed);
-  } else if (speed < 0) {
     digitalWrite(AIN1, LOW);
     digitalWrite(AIN2, HIGH);
+    ledcWrite(PWMA, speed);
+  } else if (speed < 0) {
+    digitalWrite(AIN1, HIGH);
+    digitalWrite(AIN2, LOW);
     ledcWrite(PWMA, abs(speed));
   } else {
     digitalWrite(AIN1, LOW);
@@ -98,12 +98,12 @@ void motorA(int speed) {
 
 void motorB(int speed) {
   if (speed > 0) {
-    digitalWrite(BIN1, HIGH);
-    digitalWrite(BIN2, LOW);
-    ledcWrite(PWMB, speed);
-  } else if (speed < 0) {
     digitalWrite(BIN1, LOW);
     digitalWrite(BIN2, HIGH);
+    ledcWrite(PWMB, speed);
+  } else if (speed < 0) {
+    digitalWrite(BIN1, HIGH);
+    digitalWrite(BIN2, LOW);
     ledcWrite(PWMB, abs(speed));
   } else {
     digitalWrite(BIN1, LOW);
@@ -154,6 +154,33 @@ void calculateSpeed() {
   }
 }
 
+void motorAStop() {
+  // Soft brake
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(AIN2, HIGH);
+  ledcWrite(PWMA, motorSpeed/2);     // light brake
+  delay(15);              // 10–20 ms is enough
+
+  // Coast
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, LOW);
+  ledcWrite(PWMA, 0);
+}
+
+void motorBStop() {
+  // Soft brake
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(BIN2, HIGH);
+  ledcWrite(PWMB, motorSpeed/2);     // light brake
+  delay(15);              // 10–20 ms is enough
+
+  // Coast
+  digitalWrite(BIN1, LOW);
+  digitalWrite(BIN2, LOW);
+  ledcWrite(PWMB, 0);
+}
+
+
 // ===== Setup =====
 void MotorsSetup() {
   // Setup motor driver
@@ -192,5 +219,6 @@ void turnRight() {
 }
 
 void stopMotion() {
-  stopMotors();
+  motorAStop();
+  motorBStop();
 }
