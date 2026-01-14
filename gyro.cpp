@@ -4,8 +4,8 @@
 
 #include "gyro.h"
 
-#define SDA 4
-#define SCL 15
+#define SDA 21
+#define SCL 22
 
 Adafruit_MPU6050 mpu;
 

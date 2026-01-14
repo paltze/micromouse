@@ -4,13 +4,13 @@
  * Compatible with ESP32 Arduino Core 3.x
  * 
  * TB6612FNG Connections:
- * PWMA -> GPIO 25 | AIN1 -> GPIO 26 | AIN2 -> GPIO 27
- * PWMB -> GPIO 32 | BIN1 -> GPIO 33 | BIN2 -> GPIO 14
+ * PWMA -> GPIO 23 | AIN1 -> GPIO 25 | AIN2 -> GPIO 26
+ * PWMB -> GPIO 27 | BIN1 -> GPIO 14 | BIN2 -> GPIO 16
  * STBY -> GPIO 13 | VCC -> 3.3V | VM -> Battery+ | GND -> GND
  * 
  * Speed Sensor Connections:
- * Motor A Encoder -> GPIO 34 (ADC1)
- * Motor B Encoder -> GPIO 35 (ADC1)
+ * Motor A Encoder -> GPIO 18 (ADC1)
+ * Motor B Encoder -> GPIO 19 (ADC1)
  * VCC -> 3.3V/5V | GND -> GND 
  */
 
@@ -18,48 +18,23 @@
 #include "motor.h"
 
 // ===== TB6612FNG Motor Driver Pins =====
-const int PWMA = 25;   // Motor A speed control
-const int AIN1 = 26;   // Motor A direction pin 1
-const int AIN2 = 27;   // Motor A direction pin 2
-const int PWMB = 32;   // Motor B speed control
-const int BIN1 = 33;   // Motor B direction pin 1
-const int BIN2 = 14;   // Motor B direction pin 2
-const int STBY = 13;   // Standby pin
-
-// ===== Speed Sensor Pins =====
-const int ENCODER_A = 34;  // Motor A encoder
-const int ENCODER_B = 35;  // Motor B encoder
+/*const int PWMA = 23;   // Motor A speed control
+const int AIN1 = 25;   // Motor A direction pin 1
+const int AIN2 = 26;   // Motor A direction pin 2
+const int PWMB = 27;   // Motor B speed control
+const int BIN1 = 14;   // Motor B direction pin 1
+const int BIN2 = 16;   // Motor B direction pin 2
+const int STBY = 13;   // Standby pin*/
 
 // ===== PWM Configuration =====
-const int PWM_FREQ = 5000;      // 5 KHz
+const int PWM_FREQ = 1000;      // 5 KHz
 const int PWM_RESOLUTION = 8;   // 8-bit resolution (0-255)
 
-// ===== Speed Measurement Variables =====
-volatile unsigned long pulseCountA = 0;
-volatile unsigned long pulseCountB = 0;
-unsigned long lastTimeA = 0;
-unsigned long lastTimeB = 0;
-float rpmA = 0;
-float rpmB = 0;
-
-// Speed sensor configuration150
-const int SLOTS_IN_DISC = 20;  // Number of slots in encoder disc (adjust for your sensor)
-const unsigned long CALC_INTERVAL = 1000;  // Calculate RPM every 1000ms
-
 // Motor speed (0-255)
-int motorSpeed = 80;
-
-// ===== Interrupt Service Routines =====
-void IRAM_ATTR encoderISR_A() {
-  pulseCountA = pulseCountA + 1;
-}
-
-void IRAM_ATTR encoderISR_B() {
-  pulseCountB = pulseCountB + 1;
-}
+int motorSpeed = 255;
 
 // ===== Motor Control Functions =====
-void setupMotors() {
+/*void MotorsSetup() {
   // Configure PWM for Motor A (ESP32 Core 3.x)
   ledcAttach(PWMA, PWM_FREQ, PWM_RESOLUTION);
   
@@ -75,9 +50,28 @@ void setupMotors() {
   
   // Enable motor driver (STBY HIGH)
   digitalWrite(STBY, HIGH);
+}*/
+
+// ===== L298N Motor Driver Pins =====
+const int ENA = 23;   // Motor A speed (PWM)
+const int IN1 = 25;   // Motor A direction
+const int IN2 = 26;
+
+const int ENB = 27;   // Motor B speed (PWM)
+const int IN3 = 14;   // Motor B direction
+const int IN4 = 13;
+
+void MotorsSetup() {
+  ledcAttach(ENA, PWM_FREQ, PWM_RESOLUTION);
+  ledcAttach(ENB, PWM_FREQ, PWM_RESOLUTION);
+
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
 }
 
-void motorA(int speed) {
+/*void motorA(int speed) {
   // Speed range: -255 to 255
   // Positive = forward, Negative = backward, 0 = stop
   
@@ -94,9 +88,9 @@ void motorA(int speed) {
     digitalWrite(AIN2, LOW);
     ledcWrite(PWMA, 0);
   }
-}
+}*/
 
-void motorB(int speed) {
+/*void motorB(int speed) {
   if (speed > 0) {
     digitalWrite(BIN1, LOW);
     digitalWrite(BIN2, HIGH);
@@ -112,113 +106,117 @@ void motorB(int speed) {
   }
 }
 
-void stopMotors() {
-  motorA(0);
-  motorB(0);
-}
-
-void standby() {
+void MotorsStandby() {
   digitalWrite(STBY, LOW);  // Put motor driver in standby mode
 }
 
-void wakeup() {
+void MotorsWakeup() {
   digitalWrite(STBY, HIGH);  // Wake up motor driver
-}
-
-// ===== Speed Calculation =====
-void calculateSpeed() {
-  unsigned long currentTime = millis();
-  
-  // Calculate Motor A RPM
-  if (currentTime - lastTimeA >= CALC_INTERVAL) {
-    noInterrupts();
-    unsigned long pulses = pulseCountA;
-    pulseCountA = 0;
-    interrupts();
-    
-    float timeElapsed = (currentTime - lastTimeA) / 1000.0;  // Convert to seconds
-    rpmA = (pulses / (float)SLOTS_IN_DISC) * 60.0 / timeElapsed;
-    lastTimeA = currentTime;
-  }
-  
-  // Calculate Motor B RPM
-  if (currentTime - lastTimeB >= CALC_INTERVAL) {
-    noInterrupts();
-    unsigned long pulses = pulseCountB;
-    pulseCountB = 0;
-    interrupts();
-    
-    float timeElapsed = (currentTime - lastTimeB) / 1000.0;
-    rpmB = (pulses / (float)SLOTS_IN_DISC) * 60.0 / timeElapsed;
-    lastTimeB = currentTime;
-  }
-}
+}*/
 
 void motorAStop() {
   // Soft brake
-  digitalWrite(AIN1, HIGH);
-  digitalWrite(AIN2, HIGH);
-  ledcWrite(PWMA, motorSpeed/2);     // light brake
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, HIGH);
+  ledcWrite(ENA, motorSpeed/2);     // light brake
   delay(15);              // 10–20 ms is enough
 
   // Coast
-  digitalWrite(AIN1, LOW);
-  digitalWrite(AIN2, LOW);
-  ledcWrite(PWMA, 0);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  ledcWrite(ENA, 0);
 }
 
 void motorBStop() {
   // Soft brake
-  digitalWrite(BIN1, HIGH);
-  digitalWrite(BIN2, HIGH);
-  ledcWrite(PWMB, motorSpeed/2);     // light brake
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, HIGH);
+  ledcWrite(ENB, motorSpeed/2);     // light brake
   delay(15);              // 10–20 ms is enough
 
   // Coast
-  digitalWrite(BIN1, LOW);
-  digitalWrite(BIN2, LOW);
-  ledcWrite(PWMB, 0);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+  ledcWrite(ENB, 0);
+}
+
+void motorA(int speed) {
+  speed = constrain(speed, -255, 255);
+
+  if (speed > 0) {
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    ledcWrite(ENA, speed);
+  } 
+  else if (speed < 0) {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    ledcWrite(ENA, -speed);
+  } 
+  else {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, LOW);
+    ledcWrite(ENA, 0);
+  }
+}
+
+void motorB(int speed) {
+  speed = constrain(speed, -255, 255);
+
+  if (speed > 0) {
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+    ledcWrite(ENB, speed);
+  } 
+  else if (speed < 0) {
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+    ledcWrite(ENB, -speed);
+  } 
+  else {
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, LOW);
+    ledcWrite(ENB, 0);
+  }
 }
 
 
-// ===== Setup =====
-void MotorsSetup() {
-  // Setup motor driver
-  setupMotors();
-  
-  // Setup speed sensors
-  pinMode(ENCODER_A, INPUT_PULLUP);
-  pinMode(ENCODER_B, INPUT_PULLUP);
-  
-  // Attach interrupts for encoders (FALLING edge for most groove coupler sensors)
-  attachInterrupt(digitalPinToInterrupt(ENCODER_A), encoderISR_A, FALLING);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_B), encoderISR_B, FALLING);
-  
-  lastTimeA = millis();
-  lastTimeB = millis();
+void setSpeed(int speed) {
+  motorSpeed = speed;
 }
 
-void moveForward() {
-  motorA(motorSpeed);
-  motorB(motorSpeed);
+void moveForward(float correction) {
+  correction = constrain(correction, -1 * (0.3 * motorSpeed), 0.3 * motorSpeed);
+  motorA(motorSpeed + correction);
+  motorB(motorSpeed - correction);
 }
 
-void moveBackward() {
-  motorA(-motorSpeed);
-  motorB(-motorSpeed);
+void moveBackward(float correction) {
+  correction = constrain(correction, -1 * (0.3 * motorSpeed), 0.3 * motorSpeed);
+  motorA(-motorSpeed + correction);
+  motorB(-motorSpeed - correction);
 }
 
-void turnLeft() {
-  motorA(motorSpeed / 2);
-  motorB(motorSpeed);
+void turnLeft(float correction) {
+  int speed = motorSpeed / 4;
+  correction = constrain(correction, -1 * (0.3 * speed), 0.3 * speed);
+  motorA(-speed - correction);
+  motorB(speed + correction);
 }
 
-void turnRight() {
-  motorA(motorSpeed);
-  motorB(motorSpeed / 2);
+void turnRight(float correction) {
+  int speed = motorSpeed / 4;
+  correction = constrain(correction, -1 * (0.3 * speed), 0.3 * speed);
+  motorA(speed + correction);
+  motorB(-speed - correction);
 }
 
-void stopMotion() {
+void brakeMotion() {
   motorAStop();
   motorBStop();
+}
+
+void coastMotion() {
+  motorA(0);
+  motorB(0);
 }

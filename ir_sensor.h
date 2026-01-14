@@ -6,8 +6,7 @@ typedef enum {
   FRONT_LEFT_FAR,
   FRONT_RIGHT,
   FRONT_RIGHT_FAR,
-  REAR_LEFT,
-  REAR_RIGHT
+  REAR
 } IR_SENSOR;
 
 class IRSensor {

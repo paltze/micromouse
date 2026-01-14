@@ -3,10 +3,16 @@
 
 void MotorsSetup();
 
-void moveForward();
-void moveBackward();
-void turnLeft();
-void turnRight();
-void stopMotion();
+void setSpeed(int speed);
+
+//void MotorsStandby();
+//void MotorsWakeup();
+
+void moveForward(float correction);
+void moveBackward(float correction);
+void turnLeft(float correction);
+void turnRight(float correction);
+void brakeMotion();
+void coastMotion();
 
 #endif

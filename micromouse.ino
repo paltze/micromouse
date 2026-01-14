@@ -1,104 +1,55 @@
 #include "ir_sensor.h"
 #include "motor.h"
-
-#include <WiFi.h>
-#include <esp_bt.h>
-
-int motorState = 0;
+#include "motion.h"
+#include "gyro.h"
 
 void setup() {
-  WiFi.mode(WIFI_OFF);
-  btStop();
-  esp_bt_controller_disable();
-
-
   Serial.begin(115200);
   delay(1000);
 
+  GyroSetup();
+  GyroCalibrate();
   MotorsSetup();
+  MotionSetup();
 
-  Serial.println("Serial working");
+  delay(2000); // Shortened delay for startup
 }
+
+/**
+ * BLOCKING TURN FUNCTION
+ * This function will not return until the turn is complete.
+ */
+void turnLeftBlocking(float targetRadians) {
+  RotationTracker tracker(targetRadians);
+  tracker.init();
+
+  Serial.println("Starting Turn...");
+
+  while (!tracker.done()) {
+    float correction = tracker.tick();
+    
+    // Perform the movement
+    turnLeft((int)correction);
+    
+    // Small delay to prevent CPU hogging and allow sensors to sample
+    // Adjust this based on your PID/Gyro update rate requirements
+    delay(10); 
+  }
+
+  coastMotion();
+  Serial.println("Turn Complete.");
+}
+
 
 void loop() {
-  /*if (Serial.available() > 0) {
-    char cmd = Serial.read();
+  // 1. Execute the turn. The program "stalls" here until finished.
+  turnLeftBlocking(3.14159 / 2); // 90 degree turn
 
-    switch (cmd) {
-      case 'f':
-        moveForward();
-        break;
-
-      case 'b':
-        moveBackward();
-        break;
-
-      case 'l':
-        turnLeft();
-        break;
-
-      case 'r':
-        turnRight();
-        break;
-
-      case 's':
-        stopMotion();
-        break;
-
-      default:
-        // ignore junk input
-        break;
-    }
-  }*/
-
-
-
-  /*delay(5000);
-
-  IRSensorUpdate();
-
-  Serial.print("FRONT_LEFT: ");
-  Serial.println(IRSensorIsWall(FRONT_LEFT));
-
-  Serial.print("FRONT_LEFT_FAR: ");
-  Serial.println(IRSensorIsWall(FRONT_LEFT_FAR));
-
-  Serial.print("FRONT_RIGHT: ");
-  Serial.println(IRSensorIsWall(FRONT_RIGHT));
-
-  Serial.print("FRONT_RIGHT_FAR: ");
-  Serial.println(IRSensorIsWall(FRONT_RIGHT_FAR));
-
-  Serial.print("REAR_LEFT: ");
-  Serial.println(IRSensorIsWall(REAR_LEFT));
-
-  Serial.print("REAR_RIGHT: ");
-  Serial.println(IRSensorIsWall(REAR_RIGHT));*/
-
-  /*if (IRSensorIsWall(FRONT_LEFT) || IRSensorIsWall(FRONT_RIGHT)) {
-    stopMotion();
-  }
-  else {
-    moveForward();
-  }*/
-
-  IRSensorUpdate();
-
-  if ( !motorState && ( !IRSensorIsWall(FRONT_LEFT) && !IRSensorIsWall(FRONT_RIGHT) ) ) {
-    moveForward();
-    motorState = 1;
-  }
-
-  if ( motorState && ( !IRSensorIsWall(REAR_LEFT) && !IRSensorIsWall(REAR_RIGHT) ) ) {
-    moveBackward();
-    motorState = 0;
-  }
-
-  /*if (motorState && ( IRSensorIsWall(FRONT_LEFT) || IRSensorIsWall(FRONT_RIGHT) )) {
-    moveBackward();
-    motorState = 0;
-  }*/
+  // 2. The code only reaches this point once the turn is done.
+  Serial.println("Final destination reached. Stopping forever.");
   
-  delay(200);
+  while(1) {
+    // Hang here to prevent the turn from repeating
+    delay(1000);
+  }
 }
-
